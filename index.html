@@ -583,10 +583,7 @@
 
         function updateTaxPreview() {
             var salePrice = parseNum(priceEl.value);
-            var tradeInternal = tradeOn ? parseNum(tradeInternalEl.value) : 0;
-            var tradeAllowance = tradeOn ? parseNum(tradeAllowanceEl.value) : 0;
-            var netTradeCredit = money(tradeAllowance - tradeInternal);
-            var taxableAmount = money(Math.max(0, salePrice - netTradeCredit));
+            var taxableAmount = money(Math.max(0, salePrice));
             var pct = parseFloat(taxEl.value) || 0;
             if (taxOn && taxableAmount > 0 && pct > 0) {
                 taxAmountEl.textContent = '+$' + fmt(taxableAmount * pct / 100);
@@ -694,7 +691,7 @@
                 commCardEl.classList.add('hidden');
             }
 
-            var taxableAmount = money(Math.max(0, salePrice - netTradeCredit));
+            var taxableAmount = money(Math.max(0, salePrice));
             var taxAmt = money(taxableAmount * taxPct / 100);
             var amountFinanced = money(taxableAmount + taxAmt + lenderFee - downPayment);
 
@@ -725,7 +722,7 @@
             paymentEl.textContent = '$' + fmt(M);
 
             var details = 'Start sale: $' + fmt(salePrice);
-            if (tradeOn) details += '  &middot;  Trade delta (Client - VSE): ' + (netTradeCredit >= 0 ? '−$' + fmt(netTradeCredit) : '+$' + fmt(Math.abs(netTradeCredit)));
+            if (tradeOn) details += '  &middot;  Trade delta (Client - VSE): ' + (netTradeCredit >= 0 ? '+$' + fmt(netTradeCredit) : '-$' + fmt(Math.abs(netTradeCredit))) + ' (commission only)';
             details += '  &middot;  Taxable: $' + fmt(taxableAmount);
             if (taxOn && taxAmt > 0) details += '  &middot;  Tax: +$' + fmt(taxAmt);
             if (lenderFee > 0) details += '  &middot;  Lender fee: +$' + fmt(lenderFee);
