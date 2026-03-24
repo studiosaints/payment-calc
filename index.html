@@ -86,6 +86,10 @@
                             <input id="price" type="text" inputmode="decimal" placeholder="0.00"
                                 class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-7 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition placeholder:text-zinc-600">
                         </div>
+                        <div id="priceVsListRow" class="hidden items-center gap-2 text-xs px-1 mt-1">
+                            <i class="fa-solid fa-ruler-combined text-zinc-500"></i>
+                            <span class="text-zinc-400"><span id="priceVsListAmt" class="font-semibold"></span> <span id="priceVsListText"></span> list + freight</span>
+                        </div>
                     </div>
 
                     <div>
@@ -111,13 +115,9 @@
                         </div>
                     </div>
 
-                    <div id="overAllowanceRow" class="hidden items-center gap-2 text-xs px-1">
-                        <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
-                        <span class="text-zinc-400">Over-allowance: <span id="overAllowanceAmt" class="text-amber-400 font-semibold"></span> counts as additional discount</span>
-                    </div>
-                    <div id="netTradeRow" class="hidden items-center gap-2 text-xs px-1">
+                    <div id="tradeDeltaRow" class="hidden items-center gap-2 text-xs px-1">
                         <i class="fa-solid fa-scale-balanced text-emerald-400"></i>
-                        <span class="text-zinc-400">Net trade on financing (Client - VSE): <span id="netTradeAmt" class="font-semibold"></span></span>
+                        <span class="text-zinc-400">Trade delta (Client - VSE): <span id="tradeDeltaAmt" class="font-semibold"></span></span>
                     </div>
                 </div>
 
@@ -316,10 +316,11 @@
         var tradeOn         = false;
         var tradeInternalEl = document.getElementById('tradeInternal');
         var tradeAllowanceEl= document.getElementById('tradeAllowance');
-        var overAllowRow    = document.getElementById('overAllowanceRow');
-        var overAllowAmt    = document.getElementById('overAllowanceAmt');
-        var netTradeRow     = document.getElementById('netTradeRow');
-        var netTradeAmt     = document.getElementById('netTradeAmt');
+        var tradeDeltaRow   = document.getElementById('tradeDeltaRow');
+        var tradeDeltaAmt   = document.getElementById('tradeDeltaAmt');
+        var priceVsListRow  = document.getElementById('priceVsListRow');
+        var priceVsListAmt  = document.getElementById('priceVsListAmt');
+        var priceVsListText = document.getElementById('priceVsListText');
         var taxEl           = document.getElementById('tax');
         var taxRow          = document.getElementById('taxRow');
         var taxTrack        = document.getElementById('taxTrack');
@@ -437,6 +438,7 @@
             applyTaxToggleUI();
             applyLenderFeeUI();
             updateOverAllowance();
+            updatePriceVsList();
             updateTaxPreview();
             if (parseNum(priceEl.value) > 0) {
                 calculate(false);
@@ -465,32 +467,49 @@
             var internal = tradeOn ? parseNum(tradeInternalEl.value) : 0;
             var allowance = tradeOn ? parseNum(tradeAllowanceEl.value) : 0;
             var netTradeCredit = money(allowance - internal);
-            var over = money(Math.max(0, allowance - internal));
-            if (over > 0 && (internal > 0 || allowance > 0)) {
-                overAllowRow.classList.remove('hidden');
-                overAllowRow.classList.add('flex');
-                overAllowAmt.textContent = '$' + fmt(over);
-            } else {
-                overAllowRow.classList.add('hidden');
-                overAllowRow.classList.remove('flex');
-            }
 
             if (tradeOn && (internal > 0 || allowance > 0)) {
-                netTradeRow.classList.remove('hidden');
-                netTradeRow.classList.add('flex');
+                tradeDeltaRow.classList.remove('hidden');
+                tradeDeltaRow.classList.add('flex');
                 if (netTradeCredit > 0) {
-                    netTradeAmt.className = 'text-emerald-400 font-semibold';
-                    netTradeAmt.textContent = '-$' + fmt(netTradeCredit);
+                    tradeDeltaAmt.className = 'text-emerald-400 font-semibold';
+                    tradeDeltaAmt.textContent = '+$' + fmt(netTradeCredit);
                 } else if (netTradeCredit < 0) {
-                    netTradeAmt.className = 'text-red-400 font-semibold';
-                    netTradeAmt.textContent = '+$' + fmt(Math.abs(netTradeCredit));
+                    tradeDeltaAmt.className = 'text-red-400 font-semibold';
+                    tradeDeltaAmt.textContent = '-$' + fmt(Math.abs(netTradeCredit));
                 } else {
-                    netTradeAmt.className = 'text-zinc-400 font-semibold';
-                    netTradeAmt.textContent = '$0.00';
+                    tradeDeltaAmt.className = 'text-zinc-400 font-semibold';
+                    tradeDeltaAmt.textContent = '$0.00';
                 }
             } else {
-                netTradeRow.classList.add('hidden');
-                netTradeRow.classList.remove('flex');
+                tradeDeltaRow.classList.add('hidden');
+                tradeDeltaRow.classList.remove('flex');
+            }
+        }
+
+        function updatePriceVsList() {
+            var listPrice = parseNum(listPriceEl.value);
+            var salePrice = parseNum(priceEl.value);
+            if (listPrice <= 0 || salePrice <= 0) {
+                priceVsListRow.classList.add('hidden');
+                priceVsListRow.classList.remove('flex');
+                return;
+            }
+            var delta = money(salePrice - listPrice);
+            priceVsListRow.classList.remove('hidden');
+            priceVsListRow.classList.add('flex');
+            if (delta > 0) {
+                priceVsListAmt.className = 'text-emerald-400 font-semibold';
+                priceVsListAmt.textContent = '$' + fmt(delta);
+                priceVsListText.textContent = 'above';
+            } else if (delta < 0) {
+                priceVsListAmt.className = 'text-amber-400 font-semibold';
+                priceVsListAmt.textContent = '$' + fmt(Math.abs(delta));
+                priceVsListText.textContent = 'below';
+            } else {
+                priceVsListAmt.className = 'text-zinc-300 font-semibold';
+                priceVsListAmt.textContent = '$0.00';
+                priceVsListText.textContent = 'at';
             }
         }
         tradeInternalEl.addEventListener('input', updateOverAllowance);
@@ -576,6 +595,8 @@
             }
         }
         priceEl.addEventListener('input', updateTaxPreview);
+        listPriceEl.addEventListener('input', updatePriceVsList);
+        priceEl.addEventListener('input', updatePriceVsList);
         tradeInternalEl.addEventListener('input', updateTaxPreview);
         tradeAllowanceEl.addEventListener('input', updateTaxPreview);
         lenderFeeEnabledEl.addEventListener('change', function() {
@@ -704,7 +725,7 @@
             paymentEl.textContent = '$' + fmt(M);
 
             var details = 'Start sale: $' + fmt(salePrice);
-            if (tradeOn) details += '  &middot;  Trade (Client - VSE): ' + (netTradeCredit >= 0 ? '−$' + fmt(netTradeCredit) : '+$' + fmt(Math.abs(netTradeCredit)));
+            if (tradeOn) details += '  &middot;  Trade delta (Client - VSE): ' + (netTradeCredit >= 0 ? '−$' + fmt(netTradeCredit) : '+$' + fmt(Math.abs(netTradeCredit)));
             details += '  &middot;  Taxable: $' + fmt(taxableAmount);
             if (taxOn && taxAmt > 0) details += '  &middot;  Tax: +$' + fmt(taxAmt);
             if (lenderFee > 0) details += '  &middot;  Lender fee: +$' + fmt(lenderFee);
@@ -772,6 +793,7 @@
             rateEl.value = h.rate;
             monthsEl.value = h.months;
             updateOverAllowance();
+            updatePriceVsList();
             updateTaxPreview();
             saveFormState();
             calculate();
@@ -793,6 +815,7 @@
             applyTaxToggleUI();
             applyLenderFeeUI();
             updateOverAllowance();
+            updatePriceVsList();
             updateTaxPreview();
             resultEl.classList.add('hidden');
             resultPlaceholderEl.classList.remove('hidden');
