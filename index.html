@@ -89,17 +89,17 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-zinc-400 mb-1.5">Trade-in</label>
+                        <label class="block text-sm font-medium text-zinc-400 mb-1.5">Trade-in (VSE vs Client)</label>
                         <div class="flex items-center gap-2">
                             <div id="tradeSection" class="flex items-center gap-2 flex-1 opacity-60 pointer-events-none transition-opacity">
                                 <div class="relative flex-1">
                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">$</span>
-                                    <input id="tradeInternal" type="text" inputmode="decimal" placeholder="Value (Gregg)"
+                                    <input id="tradeInternal" type="text" inputmode="decimal" placeholder="VSE value (left)"
                                         class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-7 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition placeholder:text-zinc-600">
                                 </div>
                                 <div class="relative flex-1">
                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">$</span>
-                                    <input id="tradeAllowance" type="text" inputmode="decimal" placeholder="Allowance"
+                                    <input id="tradeAllowance" type="text" inputmode="decimal" placeholder="Client offer (right)"
                                         class="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-7 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition placeholder:text-zinc-600">
                                 </div>
                             </div>
@@ -117,7 +117,7 @@
                     </div>
                     <div id="netTradeRow" class="hidden items-center gap-2 text-xs px-1">
                         <i class="fa-solid fa-scale-balanced text-emerald-400"></i>
-                        <span class="text-zinc-400">Net trade effect on financing: <span id="netTradeAmt" class="font-semibold"></span></span>
+                        <span class="text-zinc-400">Net trade on financing (Client - VSE): <span id="netTradeAmt" class="font-semibold"></span></span>
                     </div>
                 </div>
 
@@ -703,10 +703,13 @@
 
             paymentEl.textContent = '$' + fmt(M);
 
-            var details = 'Financed: $' + fmt(amountFinanced);
-            if (netTradeCredit > 0) details += '  &middot;  Net trade credit: −$' + fmt(netTradeCredit);
-            if (netTradeCredit < 0) details += '  &middot;  Net trade adjustment: +$' + fmt(Math.abs(netTradeCredit));
+            var details = 'Start sale: $' + fmt(salePrice);
+            if (tradeOn) details += '  &middot;  Trade (Client - VSE): ' + (netTradeCredit >= 0 ? '−$' + fmt(netTradeCredit) : '+$' + fmt(Math.abs(netTradeCredit)));
+            details += '  &middot;  Taxable: $' + fmt(taxableAmount);
+            if (taxOn && taxAmt > 0) details += '  &middot;  Tax: +$' + fmt(taxAmt);
             if (lenderFee > 0) details += '  &middot;  Lender fee: +$' + fmt(lenderFee);
+            if (downPayment > 0) details += '  &middot;  Down: −$' + fmt(downPayment);
+            details += '  &middot;  Financed: $' + fmt(amountFinanced);
             details += '  &middot;  Total paid: $' + fmt(totalPaid) + '  &middot;  Interest: $' + fmt(totalInterest);
             totalEl.innerHTML = details;
             resultPlaceholderEl.classList.add('hidden');
