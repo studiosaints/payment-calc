@@ -292,18 +292,23 @@
             { min: 18.0, max: Infinity,  rate: 0.01,   label: '18.0%+',       idx: 6 }
         ];
 
+        function normalizeBracketPct(pct) {
+            return Math.round((pct + Number.EPSILON) * 10) / 10;
+        }
+
         function getBracket(pct) {
-            if (pct <= 0)   return BRACKETS[0];
-            if (pct < 4.0)  return BRACKETS[1];
-            if (pct < 8.0)  return BRACKETS[2];
-            if (pct < 12.0) return BRACKETS[3];
-            if (pct < 15.0) return BRACKETS[4];
-            if (pct < 18.0) return BRACKETS[5];
+            var roundedPct = normalizeBracketPct(pct);
+            if (roundedPct <= 0)   return BRACKETS[0];
+            if (roundedPct < 4.0)  return BRACKETS[1];
+            if (roundedPct < 8.0)  return BRACKETS[2];
+            if (roundedPct < 12.0) return BRACKETS[3];
+            if (roundedPct < 15.0) return BRACKETS[4];
+            if (roundedPct < 18.0) return BRACKETS[5];
             return BRACKETS[6];
         }
 
         function getBracketFloorSale(listPrice, bracket, overAllowance) {
-            if (!bracket || !isFinite(bracket.max)) return null;
+            if (!bracket || !isFinite(bracket.max) || bracket.max <= 0) return null;
             return listPrice - (listPrice * bracket.max / 100) + overAllowance;
         }
 
@@ -606,9 +611,10 @@
 
             var overAllowance   = Math.max(0, tradeAllowance - tradeInternal);
             var netTradeCredit  = tradeAllowance - tradeInternal;
-            var directDiscount  = listPrice > 0 ? Math.max(0, listPrice - salePrice) : 0;
+            var directDiscount  = listPrice > 0 ? (listPrice - salePrice) : 0;
             var totalDiscount   = directDiscount + overAllowance;
-            var discountPct     = listPrice > 0 ? (totalDiscount / listPrice) * 100 : 0;
+            var discountPctRaw  = listPrice > 0 ? (totalDiscount / listPrice) * 100 : 0;
+            var discountPct     = normalizeBracketPct(discountPctRaw);
             var effectiveSale   = listPrice > 0 ? (salePrice - overAllowance) : salePrice;
             var commissionAmt   = 0;
             var bracket         = null;
@@ -628,8 +634,16 @@
                 commLabelEl.className = 'text-xs uppercase tracking-wider font-semibold ' + cls;
                 commRateEl.textContent = (bracket.rate * 100).toFixed(2) + '% commission rate on $' + fmt(effectiveSale);
 
-                discPctEl.textContent = discountPct.toFixed(1) + '% off';
-                discAmtEl.textContent = '$' + fmt(totalDiscount) + ' total discount';
+                if (discountPct > 0) {
+                    discPctEl.textContent = discountPct.toFixed(1) + '% off';
+                    discAmtEl.textContent = '$' + fmt(totalDiscount) + ' total discount';
+                } else if (discountPct < 0) {
+                    discPctEl.textContent = Math.abs(discountPct).toFixed(1) + '% over';
+                    discAmtEl.textContent = '$' + fmt(Math.abs(totalDiscount)) + ' above list';
+                } else {
+                    discPctEl.textContent = '0.0% off';
+                    discAmtEl.textContent = '$0.00 total discount';
+                }
 
                 bracketBadgeEl.textContent = bracket.label;
                 bracketBadgeEl.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full border ' + cls + ' ' + bgCls;
@@ -637,12 +651,16 @@
                 var bd = '';
                 if (directDiscount > 0) {
                     bd += '<div class="flex justify-between"><span>Price discount from list</span><span class="text-zinc-400">−$' + fmt(directDiscount) + '</span></div>';
+                } else if (directDiscount < 0) {
+                    bd += '<div class="flex justify-between"><span>Price above list</span><span class="text-emerald-300">+$' + fmt(Math.abs(directDiscount)) + '</span></div>';
                 }
                 if (overAllowance > 0) {
                     bd += '<div class="flex justify-between"><span>Trade-in over-allowance</span><span class="text-amber-400">−$' + fmt(overAllowance) + '</span></div>';
                 }
-                if (directDiscount > 0 && overAllowance > 0) {
-                    bd += '<div class="flex justify-between font-medium text-zinc-400 border-t border-zinc-800/30 pt-1.5 mt-1"><span>Total effective discount</span><span>$' + fmt(totalDiscount) + ' (' + discountPct.toFixed(1) + '%)</span></div>';
+                if (directDiscount !== 0 || overAllowance > 0) {
+                    var totalLabel = totalDiscount >= 0 ? 'Total effective discount' : 'Total effective markup';
+                    var totalSign = totalDiscount >= 0 ? '−$' : '+$';
+                    bd += '<div class="flex justify-between font-medium text-zinc-400 border-t border-zinc-800/30 pt-1.5 mt-1"><span>' + totalLabel + '</span><span>' + totalSign + fmt(Math.abs(totalDiscount)) + ' (' + discountPct.toFixed(1) + '%)</span></div>';
                 }
                 var bracketFloorSale = getBracketFloorSale(listPrice, bracket, overAllowance);
                 if (bracketFloorSale !== null) {
