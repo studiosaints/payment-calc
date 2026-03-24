@@ -303,8 +303,23 @@
         }
 
         function getBracketFloorSale(listPrice, bracket, overAllowance) {
-            if (!bracket || !isFinite(bracket.max) || bracket.max <= 0) return null;
-            return listPrice - (listPrice * bracket.max / 100) + overAllowance;
+            if (!bracket) return null;
+            var listCents = Math.round((listPrice + Number.EPSILON) * 100);
+            var overCents = Math.round((overAllowance + Number.EPSILON) * 100);
+            var maxDiscountCents;
+
+            // Top bracket: any positive discount drops you into the next bracket.
+            if (bracket.idx === 0) {
+                maxDiscountCents = 0;
+            } else if (bracket.idx < BRACKETS.length - 1) {
+                // Use next bracket's minimum to keep cutoff identical to bracket selection.
+                var nextMinPct = BRACKETS[bracket.idx + 1].min;
+                maxDiscountCents = Math.ceil((nextMinPct * listCents) / 100) - 1;
+            } else {
+                return null;
+            }
+
+            return (listCents + overCents - maxDiscountCents) / 100;
         }
 
         var listPriceEl     = document.getElementById('listPrice');
@@ -679,7 +694,10 @@
                 }
                 var bracketFloorSale = getBracketFloorSale(listPrice, bracket, overAllowance);
                 if (bracketFloorSale !== null) {
-                    var roomLeft = Math.max(0, salePrice - bracketFloorSale);
+                    var saleCents = Math.round((salePrice + Number.EPSILON) * 100);
+                    var floorCents = Math.round((bracketFloorSale + Number.EPSILON) * 100);
+                    var roomLeftCents = Math.max(0, saleCents - floorCents);
+                    var roomLeft = roomLeftCents / 100;
                     bd += '<div class="flex justify-between font-medium text-emerald-300 border-t border-zinc-800/30 pt-1.5 mt-1"><span>Room left in this bracket</span><span>$' + fmt(roomLeft) + '</span></div>';
                     bd += '<div class="flex justify-between"><span>Lowest sale price in this bracket</span><span class="text-zinc-400">$' + fmt(bracketFloorSale) + '</span></div>';
                 } else {
